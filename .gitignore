@@ -1,0 +1,8 @@
+examples/publisher/publisher
+examples/subscriber/subscriber
+lib/spsc_test
+
+*.o
+*.d
+*.a
+*.swp
