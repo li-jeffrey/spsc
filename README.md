@@ -1,5 +1,7 @@
 # Shared memory single-producer single-consumer queue
 
+[![C/C++ CI](https://github.com/li-jeffrey/spsc/actions/workflows/c-cpp.yml/badge.svg?branch=master)](https://github.com/li-jeffrey/spsc/actions/workflows/c-cpp.yml)
+
 Lockless implementation of a shared memory ring buffer, intended to be used as a single-producer single-consumer (SPSC) queue. Allows variable-length message sizes.
 
 # Building
