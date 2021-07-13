@@ -22,13 +22,13 @@ make examples
 
 ```
 make test
+./lib/spsc_test
 ```
-
-A test binary will be built in the [lib](lib/) folder.
 
 # Performance test
 ```
 make perf
+./lib/spsc_perf
 ```
 
 The performance test involves timing how long it takes to publish/subscribe 100000000 messages in separate processes.
