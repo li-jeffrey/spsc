@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 
 #define BUFFER_SIZE 4 * 1024 * 1024
-#define NUM_MESSAGES 100000000
+#define NUM_MESSAGES 500000000
 
 
 void publish(char* ring_name)
