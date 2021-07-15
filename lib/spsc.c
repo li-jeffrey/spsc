@@ -5,10 +5,12 @@
 #include <unistd.h>
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 
 #define HEADER_BYTE_1 0x52
 #define HEADER_BYTE_2 0x42
+#define VERSION 1
 
 
 static inline size_t get_closest_power_of_two(const size_t size)
@@ -53,8 +55,15 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 		header[1] = HEADER_BYTE_2;
 		spsc_data->_rpos = 0;
 		spsc_data->_wpos = 0;
+		spsc_data->_version = VERSION;
 		spsc_data->_size = rounded_size;
 		printf("Created shared memory file at %s\n", pathname);
+	}
+	else if (spsc_data->_size != rounded_size)
+	{
+		puts("Error: existing buffer does not match specified size");
+		munmap(spsc_data, sizeof(spsc_ring_data));
+		return -1;
 	}
 
 	ring->_data = spsc_data;
@@ -77,6 +86,22 @@ int spsc_create_pub(spsc_ring* ring, const char* pathname, const size_t size)
 	return 0;
 }
 
+static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, size_t n)
+{
+	if (offset + n > data->_size)
+	{
+		size_t overflow = offset + n - data->_size;
+		memcpy(dest, data->_buf + offset, n - overflow);
+		memcpy(dest + n - overflow, data->_buf, overflow);
+	}
+	else
+	{
+		memcpy(dest, data->_buf + offset, n);
+	}
+
+	return n;
+}
+
 size_t spsc_read(spsc_ring* ring, char* buf, size_t n)
 {
 	if (ring->mode != READ_MODE) return 0;
@@ -95,26 +120,32 @@ size_t spsc_read(spsc_ring* ring, char* buf, size_t n)
 	size_t size = data->_size;
 	size_t data_offset = sizeof(MSG_SIZE_T);
 	char msg_size_bytes[data_offset];
-	for (size_t i = 0; i < data_offset; i++)
-	{
-		msg_size_bytes[i] = data->_buf[rpos & (size - 1)];
-		rpos++;
-	}
+	rpos += _read(data, rpos & (size - 1), msg_size_bytes, data_offset);
 	
 	MSG_SIZE_T msg_size = *(MSG_SIZE_T*) msg_size_bytes;
 
-	size_t read = msg_size;
-	if (read > n) read = n;
-
-	for (size_t i = 0; i < read; i++)
-	{
-		size_t idx = (rpos + i) & (size - 1);
-		buf[i] = data->_buf[idx];
-	}
+	size_t read = msg_size > n ? n : msg_size;
+	_read(data, rpos & (size - 1), buf, read);
 
 	rpos += msg_size;
 	__atomic_store(&data->_rpos, &rpos, __ATOMIC_RELEASE);
 	return read;
+}
+
+static inline size_t _write(spsc_ring_data* data, size_t offset, char* src, size_t n)
+{
+	if (offset + n > data->_size)
+	{
+		size_t overflow = offset + n - data->_size;
+		memcpy(data->_buf + offset, src, n - overflow);
+		memcpy(data->_buf, src + n - overflow, overflow);
+	}
+	else
+	{
+		memcpy(data->_buf + offset, src, n);
+	}
+
+	return n;
 }
 
 MSG_SIZE_T spsc_write(spsc_ring* ring, char* buf, MSG_SIZE_T n)
@@ -136,17 +167,8 @@ MSG_SIZE_T spsc_write(spsc_ring* ring, char* buf, MSG_SIZE_T n)
 	}
 
 	char* msg_size_bytes = (char*) &n;
-	for (size_t i = 0; i < data_offset; i++)
-	{
-		data->_buf[wpos & (size - 1)] = msg_size_bytes[i];
-		wpos++;
-	}
-
-	for (MSG_SIZE_T i = 0; i < n; i++)
-	{
-		data->_buf[wpos & (size - 1)] = buf[i];
-		wpos++;
-	}
+	wpos += _write(data, wpos & (size - 1), msg_size_bytes, data_offset);
+	wpos += _write(data, wpos & (size - 1), buf, n);
 
 	__atomic_store(&data->_wpos, &wpos, __ATOMIC_RELEASE);
 	return n;

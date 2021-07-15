@@ -4,18 +4,19 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/wait.h>
 
 #define BUFFER_SIZE 4 * 1024 * 1024
 #define NUM_MESSAGES 100000000
 
-#define SLEEP_NANOS 200
 
 void publish(char* ring_name)
 {
 	spsc_ring ring;
 	if (spsc_create_pub(&ring, ring_name, BUFFER_SIZE)) return;
+
+	long count = 0;
+	long retry_count = 0;
 
 	char msg[135];
 	if (spsc_write(&ring, "start", 5) == 0)
@@ -24,19 +25,13 @@ void publish(char* ring_name)
 		return;
 	}
 
-	long count = 0;
-	long retry_count = 0;
-
-	struct timespec ts;
-	ts.tv_sec = 0;
-	ts.tv_nsec = SLEEP_NANOS;
 	while (count < NUM_MESSAGES)
 	{
 		if (spsc_write(&ring, msg, 135) == 135) count++;
 		else
 		{
 			retry_count++;
-			nanosleep(&ts, 0);
+			usleep(1);
 		}
 	}
 
@@ -52,23 +47,18 @@ void subscribe(char* ring_name)
 
 	char buf[256];
 	long count = 0;
-	int started = 0;
 	
 	clock_t t;
+	while(1)
+	{
+		if (spsc_read(&ring, buf, 256) > 0) break;
+	}
 	
+	puts("Started clock.");
+	t = clock();
 	while (1)
 	{
-		size_t len = spsc_read(&ring, buf, 256);
-		if (started)
-		{
-			if (len > 0 && ++count == NUM_MESSAGES) break;
-		}
-		else if (len != 0)
-		{
-			puts("Started clock.");
-			started = 1;
-			t = clock();
-		}
+		if (spsc_read(&ring, buf, 256) > 0 && ++count == NUM_MESSAGES) break;
 	}
 	t = clock() - t;
 	float elapsed = ((float) t) / CLOCKS_PER_SEC;

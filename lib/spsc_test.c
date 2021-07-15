@@ -24,22 +24,22 @@ char* test_pub_sub()
 	MU_ASSERT(pub._data->_size == 128);
 
 	// write buffer until full
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 14; i++)
 	{
-		MU_ASSERT(spsc_write(&pub, "abcd", 4) == 4);
+		MU_ASSERT(spsc_write(&pub, "abcde", 5) == 5);
 	}
-	MU_ASSERT(spsc_write(&pub, "abcd", 4) == 0);
+	MU_ASSERT(spsc_write(&pub, "abcde", 5) == 0);
 
 	// unmap publisher
 	spsc_destroy(&pub);
 
 	// read from buffer
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 14; i++)
 	{
-		char buf[5];
-		MU_ASSERT(spsc_read(&sub, buf, 4) == 4);
-		buf[4] = '\0';
-		MU_ASSERT_STR("abcd", buf);
+		char buf[6];
+		MU_ASSERT(spsc_read(&sub, buf, 5) == 5);
+		buf[5] = '\0';
+		MU_ASSERT_STR("abcde", buf);
 	}
 
 	char buf[1];
@@ -49,7 +49,13 @@ char* test_pub_sub()
 	if (spsc_create_pub(&pub, ring_name, 100)) return "Failed to create publisher";
 
 	// write again, expect success
-	MU_ASSERT(spsc_write(&pub, "abcd", 4) == 4);
+	MU_ASSERT(spsc_write(&pub, "abcde", 5) == 5);
+
+	// read again
+	char buf2[6];
+	MU_ASSERT(spsc_read(&sub, buf2, 5) == 5);
+	buf2[5] = '\0';
+	MU_ASSERT_STR("abcde", buf2);
 	return 0;
 }
 
