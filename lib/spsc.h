@@ -12,6 +12,7 @@
 typedef struct spsc_ring_data
 {
 	char _header[2];
+	int _version;
 	size_t _size;
 	char __pad0[64];
 
