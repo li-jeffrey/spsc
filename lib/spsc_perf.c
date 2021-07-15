@@ -5,6 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/wait.h>
 
 #define BUFFER_SIZE 4 * 1024 * 1024
 #define NUM_MESSAGES 100000000
@@ -29,7 +30,6 @@ void publish(char* ring_name)
 	struct timespec ts;
 	ts.tv_sec = 0;
 	ts.tv_nsec = SLEEP_NANOS;
-	clock_t t = clock();
 	while (count < NUM_MESSAGES)
 	{
 		if (spsc_write(&ring, msg, 135) == 135) count++;
@@ -40,7 +40,6 @@ void publish(char* ring_name)
 		}
 	}
 
-	t = clock() - t;
 	printf("Retry count: %ld\n", retry_count);
 	return;
 }
@@ -104,6 +103,7 @@ int main(int argc, char** argv)
 	else 
 	{
 		subscribe(ring_name);
+		while(wait(NULL) > 0);
 	}
 
 	return 0;
