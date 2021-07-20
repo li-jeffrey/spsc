@@ -15,17 +15,11 @@ void publish(char* ring_name)
 	spsc_ring ring;
 	if (spsc_create_pub(&ring, ring_name, BUFFER_SIZE)) return;
 
-	long count = 0;
-	long retry_count = 0;
+	uint64_t count = 0;
+	uint64_t retry_count = 0;
 
 	char msg[135];
-	if (spsc_write(&ring, "start", 5) == 0)
-	{
-		puts("Failed to write.");
-		return;
-	}
-
-	while (count < NUM_MESSAGES)
+	while (count <= NUM_MESSAGES)
 	{
 		if (spsc_write(&ring, msg, 135) == 135) count++;
 		else
@@ -36,7 +30,6 @@ void publish(char* ring_name)
 	}
 
 	printf("Retry count: %ld\n", retry_count);
-	return;
 }
 
 void subscribe(char* ring_name)
@@ -46,7 +39,7 @@ void subscribe(char* ring_name)
 	puts("Waiting for messages...");
 
 	char buf[256];
-	long count = 0;
+	uint64_t count = 0;
 	
 	clock_t t;
 	while(1)
@@ -66,7 +59,6 @@ void subscribe(char* ring_name)
 	printf("Message count: %ld\n", count);
 	printf("Elapsed: %.2fs\n", elapsed);
 	printf("Messages per second: %.0f\n", count / elapsed);
-	return;
 }
 
 int main(int argc, char** argv)

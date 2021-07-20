@@ -34,7 +34,7 @@ typedef struct spsc_ring
 int spsc_create_sub(spsc_ring* ring, const char* pathname, const size_t size);
 int spsc_create_pub(spsc_ring* ring, const char* pathname, const size_t size);
 
-size_t spsc_read(spsc_ring* ring, char* buf, size_t bytes);
-MSG_SIZE_T spsc_write(spsc_ring* ring, char* str, MSG_SIZE_T n);
+size_t spsc_read(spsc_ring* ring, void* dest, size_t bytes);
+MSG_SIZE_T spsc_write(spsc_ring* ring, void* src, MSG_SIZE_T n);
 
 void spsc_destroy(spsc_ring* ring);
