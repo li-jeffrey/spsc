@@ -102,7 +102,7 @@ static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, size
 	return n;
 }
 
-size_t spsc_read(spsc_ring* ring, char* buf, size_t n)
+size_t spsc_read(spsc_ring* ring, void* dest, size_t n)
 {
 	if (ring->mode != READ_MODE) return 0;
 
@@ -125,7 +125,7 @@ size_t spsc_read(spsc_ring* ring, char* buf, size_t n)
 	MSG_SIZE_T msg_size = *(MSG_SIZE_T*) msg_size_bytes;
 
 	size_t read = msg_size > n ? n : msg_size;
-	_read(data, rpos & (size - 1), buf, read);
+	_read(data, rpos & (size - 1), (char*) dest, read);
 
 	rpos += msg_size;
 	__atomic_store(&data->_rpos, &rpos, __ATOMIC_RELEASE);
@@ -148,7 +148,7 @@ static inline size_t _write(spsc_ring_data* data, size_t offset, char* src, size
 	return n;
 }
 
-MSG_SIZE_T spsc_write(spsc_ring* ring, char* buf, MSG_SIZE_T n)
+MSG_SIZE_T spsc_write(spsc_ring* ring, void* buf, MSG_SIZE_T n)
 {
 	if (ring->mode != WRITE_MODE) return 0;
 
@@ -168,7 +168,7 @@ MSG_SIZE_T spsc_write(spsc_ring* ring, char* buf, MSG_SIZE_T n)
 
 	char* msg_size_bytes = (char*) &n;
 	wpos += _write(data, wpos & (size - 1), msg_size_bytes, data_offset);
-	wpos += _write(data, wpos & (size - 1), buf, n);
+	wpos += _write(data, wpos & (size - 1), (char*) buf, n);
 
 	__atomic_store(&data->_wpos, &wpos, __ATOMIC_RELEASE);
 	return n;

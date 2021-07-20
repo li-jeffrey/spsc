@@ -23,18 +23,33 @@ make examples
 
 ```
 make test
-./lib/spsc_test
 ```
 
-# Performance test (throughput)
+This creates a test binary at `./lib/spsc_test`.
+
+# Performance tests
 ```
 make perf
-./lib/spsc_perf
 ```
 
-The performance test involves timing how long it takes to publish/subscribe 500 million messages in separate processes. During this test, the producer will sleep for 1 micro if the queue is saturated.
+### ./lib/perf_throughput
+
+The throughput test times how long it takes to publish/subscribe 500 million messages in separate processes. During this test, the producer will sleep for 1 micro if the queue is full.
+
+### ./lib/perf_latency
+
+The latency test sets up two ring buffers and measures the round trip time for 500,000 messages. To make sure the queue does not get saturated, there is a sleep time of 1 microsecond between the writes.
 
 ## Results
 
-Taking the best of 3 runs, roughly 29M ops/second have been recorded on an Intel i5-8265U CPU (WSL2 Debian).
+The following results are recorded on an Intel i5-8265U CPU running WSL2 Debian, taking the best of 3 runs.
+
+|Test type|Result|
+|-|-|
+|Throughput|27,414,064 ops/s|
+|Latency (p50)|532 ns|
+|Latency (p75)|563 ns|
+|Latency (p90)|589 ns|
+|Latency (p95)|602 ns|
+|Latency (p99)|747 ns|
 

@@ -17,7 +17,7 @@ jobs:
       run: make test
     - name: run test binary
       run: ./lib/spsc_test
-    - name: make perf test
+    - name: make perf
       run: make perf
-    - name: run perf binary
-      run: ./lib/spsc_perf
+    - name: run perf binaries
+      run: ./lib/perf_throughput; ./lib/perf_latency

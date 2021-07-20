@@ -1,7 +1,7 @@
 examples/publisher/publisher
 examples/subscriber/subscriber
 lib/spsc_test
-lib/spsc_perf
+lib/perf_*
 
 *.o
 *.d
