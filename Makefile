@@ -5,13 +5,11 @@ default: all
 
 clean:
 	$(MAKE) -C lib/ $@
-	$(MAKE) -C examples/subscriber $@
-	$(MAKE) -C examples/publisher $@
+	$(MAKE) -C examples/ $@
 
 .PHONY: clean
 
 examples:
-	$(MAKE) -C examples/subscriber all 
-	$(MAKE) -C examples/publisher all
+	$(MAKE) -C examples/ $@
 
 .PHONY: examples 

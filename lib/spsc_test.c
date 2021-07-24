@@ -94,6 +94,9 @@ char* test_ring_permissions()
 
 	char buf[1];
 	MU_ASSERT(spsc_read(&pub, buf, 1) == 0);
+
+	MU_ASSERT(spsc_create_sub(&sub, ring_name, 100) == -1);
+	MU_ASSERT(spsc_create_pub(&pub, ring_name, 100) == -1);
 	return 0;
 }
 
