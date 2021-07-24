@@ -75,9 +75,16 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 	if (addr == MAP_FAILED)
 	{
 		perror("[spsc] mmap");
+		close(fd);
 		return -1;
 	}
-	close(fd);
+
+	if (flock(fd, LOCK_EX) == -1)
+	{
+		perror("[spsc] flock");
+		close(fd);
+		return -1;
+	}
 
 	spsc_ring_data* spsc_data = (spsc_ring_data*) addr;
 	char* header = spsc_data->_header;
@@ -92,11 +99,15 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 	}
 	else if (spsc_data->_size != rounded_size)
 	{
-		puts("[spsc] create: existing buffer does not match specified size");
+		puts("[spsc] create: Existing buffer does not match specified size");
 		munmap(spsc_data, sizeof(spsc_ring_data));
+		flock(fd, LOCK_UN);
+		close(fd);
 		return -1;
 	}
-
+	
+	flock(fd, LOCK_UN);
+	close(fd);
 	ring->_data = spsc_data;
 	return 0;
 }
@@ -127,7 +138,7 @@ int spsc_create_pub(spsc_ring* ring, const char* pathname, const size_t size)
 	return 0;
 }
 
-static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, size_t n)
+static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, const size_t n)
 {
 	if (offset + n > data->_size)
 	{
@@ -143,7 +154,7 @@ static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, size
 	return n;
 }
 
-size_t spsc_read(spsc_ring* ring, void* dest, size_t n)
+size_t spsc_read(spsc_ring* ring, void* dest, const size_t n)
 {
 	if (ring->mode != READ_MODE) return 0;
 
@@ -173,7 +184,7 @@ size_t spsc_read(spsc_ring* ring, void* dest, size_t n)
 	return read;
 }
 
-static inline size_t _write(spsc_ring_data* data, size_t offset, char* src, size_t n)
+static inline size_t _write(spsc_ring_data* data, size_t offset, const char* src, const size_t n)
 {
 	if (offset + n > data->_size)
 	{
@@ -189,7 +200,7 @@ static inline size_t _write(spsc_ring_data* data, size_t offset, char* src, size
 	return n;
 }
 
-MSG_SIZE_T spsc_write(spsc_ring* ring, void* buf, MSG_SIZE_T n)
+MSG_SIZE_T spsc_write(spsc_ring* ring, const void* buf, const MSG_SIZE_T n)
 {
 	if (ring->mode != WRITE_MODE) return 0;
 
@@ -213,6 +224,20 @@ MSG_SIZE_T spsc_write(spsc_ring* ring, void* buf, MSG_SIZE_T n)
 
 	__atomic_store(&data->_wpos, &wpos, __ATOMIC_RELEASE);
 	return n;
+}
+
+size_t inline spsc_size(const spsc_ring* ring)
+{
+	size_t wpos;
+	size_t rpos;
+	__atomic_load(&ring->_data->_wpos, &wpos, __ATOMIC_ACQUIRE);
+	__atomic_load(&ring->_data->_rpos, &rpos, __ATOMIC_ACQUIRE);
+	return wpos - rpos;
+}
+
+size_t inline spsc_capacity(const spsc_ring* ring)
+{
+	return ring->_data->_size;
 }
 
 void spsc_destroy(spsc_ring* ring)

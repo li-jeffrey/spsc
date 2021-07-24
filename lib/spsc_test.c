@@ -21,13 +21,15 @@ char* test_pub_sub()
 
 	if (spsc_create_pub(&pub, ring_name, 100)) return "Failed to create publisher";
 	if (spsc_create_sub(&sub, ring_name, 100)) return "Failed to create subscriber";
-	MU_ASSERT(pub._data->_size == 128);
+	MU_ASSERT(spsc_size(&pub) == 0);
+	MU_ASSERT(spsc_capacity(&pub) == 128);
 
 	// write buffer until full
 	for (int i = 0; i < 14; i++)
 	{
 		MU_ASSERT(spsc_write(&pub, "abcde", 5) == 5);
 	}
+	MU_ASSERT(spsc_size(&pub) == 126); // (5 + 4) x 14
 	MU_ASSERT(spsc_write(&pub, "abcde", 5) == 0);
 
 	// unmap publisher
@@ -41,6 +43,7 @@ char* test_pub_sub()
 		buf[5] = '\0';
 		MU_ASSERT_STR("abcde", buf);
 	}
+	MU_ASSERT(spsc_size(&sub) == 0);
 
 	char buf[1];
 	MU_ASSERT(spsc_read(&sub, buf, 1) == 0);
@@ -50,6 +53,7 @@ char* test_pub_sub()
 
 	// write again, expect success
 	MU_ASSERT(spsc_write(&pub, "abcde", 5) == 5);
+	MU_ASSERT(spsc_size(&pub) == 9); // 5 (body) + 4 (header)
 
 	// read again
 	char buf2[6];
@@ -97,6 +101,23 @@ char* test_ring_permissions()
 
 	MU_ASSERT(spsc_create_sub(&sub, ring_name, 100) == -1);
 	MU_ASSERT(spsc_create_pub(&pub, ring_name, 100) == -1);
+	return 0;
+}
+
+char* test_size_check()
+{
+	spsc_ring pub;
+	spsc_ring sub;
+
+	char ring_name[] = "/tmp/ringXXXXXX";
+	if (mkstemp(ring_name) == -1)
+	{
+		perror("mkstemp");
+		return "Failed to create ring";
+	}
+
+	if (spsc_create_pub(&pub, ring_name, 100)) return "Failed to create publisher";
+	MU_ASSERT(spsc_create_sub(&sub, ring_name, 10) == -1);
 	return 0;
 }
 
@@ -193,6 +214,7 @@ char* test_all()
 	MU_RUN_TEST(test_pub_sub);
 	MU_RUN_TEST(test_sub_empty);
 	MU_RUN_TEST(test_ring_permissions);
+	MU_RUN_TEST(test_size_check);
 	MU_RUN_TEST(test_pub_sub_multiprocess);
 	return 0;
 }
