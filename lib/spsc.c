@@ -1,21 +1,53 @@
 #include "spsc.h"
 
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/file.h>
+#include <sys/mman.h>
 
-#define HEADER_BYTE_1 0x52
-#define HEADER_BYTE_2 0x42
-#define VERSION 1
+#define SPSC_HEADER_BYTE_1 0x52
+#define SPSC_HEADER_BYTE_2 0x42
+#define SPSC_VERSION 1
 
 
-static inline size_t get_closest_power_of_two(const size_t size)
+static inline size_t get_next_power_of_two(const size_t n)
 {
-	return 1 << (size_t) ceil(log2((double) size));
+	size_t x = 1;
+	while (x < n) x <<= 1;
+	return x;
+}
+
+static int spsc_flock(spsc_ring* ring, const char* pathname, int mode)
+{
+	char* lock_suffix = mode == READ_MODE ? ".read.lock" : ".write.lock";
+	char* lock_path = (char*) malloc(strlen(pathname) + strlen(lock_suffix) + 1);
+	strcpy(lock_path, pathname);
+	strcat(lock_path, lock_suffix);
+	int permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+	int fd = open(lock_path, O_RDWR | O_CREAT, permissions);
+	free(lock_path);
+	if (fd == -1)
+	{
+		perror("[spsc] open");
+		return -1;
+	}
+
+	if (flock(fd, LOCK_EX | LOCK_NB) == -1)
+	{
+		perror("[spsc] flock");
+		return -1;
+	}
+
+	ring->flock_fd = fd;
+	return 0;
+}
+
+static inline void spsc_funlock(spsc_ring* ring)
+{
+	close(ring->flock_fd);
 }
 
 static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
@@ -24,17 +56,17 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 	int fd = open(pathname, O_RDWR | O_CREAT, permissions);
 	if (fd == -1)
 	{
-		perror("open");
+		perror("[spsc] open");
 		return -1;
 	}
 
 	int protection = PROT_READ | PROT_WRITE;
 	int visibility = MAP_SHARED;
-	size_t rounded_size = get_closest_power_of_two(size);
+	size_t rounded_size = get_next_power_of_two(size);
 	size_t mmap_size = sizeof(spsc_ring_data) + rounded_size;
 	if (posix_fallocate(fd, 0, mmap_size + 1) != 0)
 	{
-		perror("fallocate");
+		perror("[spsc] fallocate");
 		close(fd);
 		return -1;
 	}
@@ -42,26 +74,25 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 	void* addr = mmap(NULL, mmap_size, protection, visibility, fd, 0);
 	if (addr == MAP_FAILED)
 	{
-		perror("mmap");
+		perror("[spsc] mmap");
 		return -1;
 	}
 	close(fd);
 
 	spsc_ring_data* spsc_data = (spsc_ring_data*) addr;
 	char* header = spsc_data->_header;
-	if (header[0] != HEADER_BYTE_1 || header[1] != HEADER_BYTE_2)
+	if (header[0] != SPSC_HEADER_BYTE_1 || header[1] != SPSC_HEADER_BYTE_2)
 	{
-		header[0] = HEADER_BYTE_1;
-		header[1] = HEADER_BYTE_2;
+		header[0] = SPSC_HEADER_BYTE_1;
+		header[1] = SPSC_HEADER_BYTE_2;
 		spsc_data->_rpos = 0;
 		spsc_data->_wpos = 0;
-		spsc_data->_version = VERSION;
+		spsc_data->_version = SPSC_VERSION;
 		spsc_data->_size = rounded_size;
-		printf("Created shared memory file at %s\n", pathname);
 	}
 	else if (spsc_data->_size != rounded_size)
 	{
-		puts("Error: existing buffer does not match specified size");
+		puts("[spsc] create: existing buffer does not match specified size");
 		munmap(spsc_data, sizeof(spsc_ring_data));
 		return -1;
 	}
@@ -72,7 +103,12 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 
 int spsc_create_sub(spsc_ring* ring, const char* pathname, const size_t size)
 {
-	if (spsc_create(ring, pathname, size) == -1) return -1;
+	if (spsc_flock(ring, pathname, READ_MODE) == -1) return -1;
+	if (spsc_create(ring, pathname, size) == -1)
+	{
+		spsc_funlock(ring);
+		return -1;
+	}
 
 	ring->mode = READ_MODE;
 	return 0;
@@ -80,7 +116,12 @@ int spsc_create_sub(spsc_ring* ring, const char* pathname, const size_t size)
 
 int spsc_create_pub(spsc_ring* ring, const char* pathname, const size_t size)
 {
-	if (spsc_create(ring, pathname, size) == -1) return -1;
+	if (spsc_flock(ring, pathname, WRITE_MODE) == -1) return -1;
+	if (spsc_create(ring, pathname, size) == -1)
+	{
+		spsc_funlock(ring);
+		return -1;
+	}
 
 	ring->mode = WRITE_MODE;
 	return 0;
@@ -177,4 +218,5 @@ MSG_SIZE_T spsc_write(spsc_ring* ring, void* buf, MSG_SIZE_T n)
 void spsc_destroy(spsc_ring* ring)
 {
 	munmap(ring->_data, sizeof(spsc_ring_data));
+	spsc_funlock(ring);
 }

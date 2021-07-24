@@ -29,6 +29,7 @@ typedef struct spsc_ring
 {
 	spsc_ring_data* _data;
 	int mode;
+	int flock_fd;
 } spsc_ring;
 
 int spsc_create_sub(spsc_ring* ring, const char* pathname, const size_t size);

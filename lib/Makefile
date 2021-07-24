@@ -8,7 +8,7 @@ TEST_APP_OBJ=spsc_test.o
 
 CFLAGS=-Wpedantic -Wall -O3 -g
 
-TEST_LDFLAGS=-L./ -lspsc -lm
+TEST_LDFLAGS=-L./ -lspsc
 PERF_LDFLAGS=-L./ -lspsc -lm
 
 all: $(LIB_NAME)
