@@ -1,9 +1,0 @@
-examples/publisher
-examples/subscriber
-lib/spsc_test
-lib/perf_*
-
-*.o
-*.d
-*.a
-*.swp
