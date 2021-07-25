@@ -1,11 +1,13 @@
 # Shared memory single-producer single-consumer queue
 
 [![C/C++ CI](https://github.com/li-jeffrey/spsc/actions/workflows/c-cpp.yml/badge.svg?branch=master)](https://github.com/li-jeffrey/spsc/actions/workflows/c-cpp.yml)
+[![Generate docs](https://github.com/li-jeffrey/spsc/actions/workflows/doxygen.yml/badge.svg)](https://github.com/li-jeffrey/spsc/actions/workflows/doxygen.yml)
 
 Lockless implementation of a shared memory ring buffer, intended to be used as a single-producer single-consumer (SPSC) queue. Allows variable-length message sizes.
 
+Full API documentation can be found [here](https://li-jeffrey.github.io/spsc/).
 
-# Building
+## Building
 
 Run the following command to build a static libary.
 
@@ -19,7 +21,7 @@ Publisher and subscriber examples can be found under [examples](examples/). To b
 make examples
 ```
 
-# Testing
+## Testing
 
 ```
 make test
@@ -27,7 +29,7 @@ make test
 
 This creates a test binary at `./lib/spsc_test`.
 
-# Performance tests
+## Performance tests
 ```
 make perf
 ```
