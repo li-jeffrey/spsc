@@ -1,0 +1,24 @@
+
+# This workflow generates the documentation for this project using doxygen, and publishes them onto the repository's github pages.
+
+name: Generate docs
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Run doxygen
+        uses: mattnotmitt/doxygen-action@v1
+
+      - name: Publish onto Github pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/html
