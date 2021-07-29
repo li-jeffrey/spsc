@@ -48,10 +48,10 @@ The following results are recorded on an Intel i5-8265U CPU running WSL2 Debian,
 
 |Test type|Result|
 |-|-|
-|Throughput|27,414,064 ops/s|
-|Latency (p50)|532 ns|
-|Latency (p75)|563 ns|
-|Latency (p90)|589 ns|
-|Latency (p95)|602 ns|
-|Latency (p99)|747 ns|
+|Throughput|29,794,176 ops/s|
+|Latency (p50)|466 ns|
+|Latency (p75)|487 ns|
+|Latency (p90)|520 ns|
+|Latency (p95)|547 ns|
+|Latency (p99)|836 ns|
 

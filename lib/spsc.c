@@ -63,7 +63,9 @@ static int spsc_create(spsc_ring* ring, const char* pathname, const size_t size)
 	int protection = PROT_READ | PROT_WRITE;
 	int visibility = MAP_SHARED;
 	size_t rounded_size = get_next_power_of_two(size);
-	size_t mmap_size = sizeof(spsc_ring_data) + rounded_size;
+
+	// allocate double the rounded_size here, to allow reading/writing without checking for overflow.
+	size_t mmap_size = sizeof(spsc_ring_data) + rounded_size * 2;
 	if (posix_fallocate(fd, 0, mmap_size + 1) != 0)
 	{
 		perror("[spsc] fallocate");
@@ -140,17 +142,7 @@ int spsc_create_pub(spsc_ring* ring, const char* pathname, const size_t size)
 
 static inline size_t _read(spsc_ring_data* data, size_t offset, char* dest, const size_t n)
 {
-	if (offset + n > data->_size)
-	{
-		size_t overflow = offset + n - data->_size;
-		memcpy(dest, data->_buf + offset, n - overflow);
-		memcpy(dest + n - overflow, data->_buf, overflow);
-	}
-	else
-	{
-		memcpy(dest, data->_buf + offset, n);
-	}
-
+	memcpy(dest, data->_buf + offset, n);
 	return n;
 }
 
@@ -186,17 +178,7 @@ size_t spsc_read(spsc_ring* ring, void* dest, const size_t n)
 
 static inline size_t _write(spsc_ring_data* data, size_t offset, const char* src, const size_t n)
 {
-	if (offset + n > data->_size)
-	{
-		size_t overflow = offset + n - data->_size;
-		memcpy(data->_buf + offset, src, n - overflow);
-		memcpy(data->_buf, src + n - overflow, overflow);
-	}
-	else
-	{
-		memcpy(data->_buf + offset, src, n);
-	}
-
+	memcpy(data->_buf + offset, src, n);
 	return n;
 }
 
